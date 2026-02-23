@@ -593,20 +593,38 @@ process_sample() {
 # Run pipeline
 # -----------------------------
 for sample in "${SAMPLES[@]}"; do
-  if ! (set +e; process_sample "$sample"); then
+  set +e
+  process_sample "$sample"
+  rc=$?
+  set -e
+
+  if [[ $rc -ne 0 ]]; then
     log "[$sample] Completed with errors (see SUMMARY.tsv)"
   else
     log "[$sample] Completed"
   fi
 done
 
-# Combined counts matrix (robust)
+# -----------------------------
+# Combined counts matrix
+# -----------------------------
 COMBINED_COUNTS="$OUTPUT_DIR/counts/combined_counts.txt"
 
 if [[ "${#BAM_LIST[@]}" -gt 0 ]]; then
   if [[ "$FORCE" -eq 1 || ! -f "$COMBINED_COUNTS" ]]; then
     bam_args=$(quote_args "${BAM_LIST[@]}")
-    run_cmd "featureCounts -T $THREADS -s $STRANDED -a \"$GTF\" -o \"$COMBINED_COUNTS\" $bam_args"
+
+    # Auto-detect PE vs SE from the first BAM
+    # If there are any paired reads (-f 1), treat as paired-end and use -p -B -C.
+    FC_COMBINED_FLAGS=""
+    if command -v samtools >/dev/null 2>&1; then
+      pe_reads=$(samtools view -c -f 1 "${BAM_LIST[0]}" 2>/dev/null || echo 0)
+      if [[ "${pe_reads:-0}" -gt 0 ]]; then
+        FC_COMBINED_FLAGS="-p -B -C"
+      fi
+    fi
+
+    run_cmd "featureCounts -T $THREADS -s $STRANDED $FC_COMBINED_FLAGS -a \"$GTF\" -o \"$COMBINED_COUNTS\" $bam_args"
   else
     log "Skip combined featureCounts (exists)"
   fi
@@ -614,7 +632,9 @@ else
   log "No BAMs available for combined counts"
 fi
 
+# -----------------------------
 # MultiQC
+# -----------------------------
 if [[ "$FORCE" -eq 1 || ! -f "$OUTPUT_DIR/multiqc/multiqc_report.html" ]]; then
   run_cmd "multiqc -o \"$OUTPUT_DIR/multiqc\" \"$OUTPUT_DIR/qc_raw\" \"$OUTPUT_DIR/qc_trimmed\" \"$OUTPUT_DIR/star\" \"$OUTPUT_DIR/counts\""
 else
