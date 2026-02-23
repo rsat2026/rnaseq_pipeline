@@ -29,9 +29,7 @@ Outputs:
 These depend heavily on genome size and sample count.
 
 - **CPU:** 4 cores minimum (8+ recommended)
-- **RAM:**
-  - small genomes (yeast/bacteria): **8–16 GB** often OK
-  - human/mouse: **32 GB recommended** for smoother STAR indexing/mapping
+- **RAM:** **32 GB recommended** for smoother STAR indexing/mapping
 - **Disk:** **50–150+ GB free** (FASTQs + BAMs + STAR outputs + QC)
 - **Internet:** needed to download tools and reference files
 
@@ -136,12 +134,12 @@ These are placed in:  my_rnaseq_project/reference/
 
 
 my_rnaseq_project/
-fastq/
+fastqs/
 reference/
 GRCh38.primary_assembly.genome.fa
 gencode.v44.primary_assembly.annotation.gtf
 STAR_index/
-output/
+
 
 ---
 
@@ -153,8 +151,8 @@ After STAR index finishes:
 cd my_rnaseq_project
 
 bash rnaseq_pipeline.sh
--i fastq
--o output
+-i fastqs
+-o rna_output
 -g reference/STAR_index
 -a reference/gencode.v44.primary_assembly.annotation.gtf
 -t 4
